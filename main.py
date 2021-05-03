@@ -106,10 +106,10 @@ def main():
                             first_name, last_name = compose_last_name(last_name)
                             ws.cell(row=current_row, column=F_NAME_COL, value=first_name)
                             ws.cell(row=current_row, column=L_NAME_COL, value=last_name)
-                    if password is None or type(password) == int:
-                        if config['UPDATE_PASSWORD'] or type(password) == int:
-                            pass_gen = chr(random.randrange(ord('a'), ord('z')))
-                            ws.cell(row=current_row, column=PASS_COL, value=pass_gen)
+                    if config['UPDATE_PASSWORD'] or type(password) == int:
+                        # if password is None or type(password) == int:
+                        pass_gen = chr(random.randrange(ord('a'), ord('z')))
+                        ws.cell(row=current_row, column=PASS_COL, value=pass_gen)
 
                     if config['UPDATE_USERNAME']:
                         username = compose_username(first_name, last_name, etabliss, usernames)
@@ -123,7 +123,8 @@ def main():
             with open(CSV, 'w', newline="", encoding='utf-8') as fh:
                 c = csv.writer(fh, delimiter=config['CSV_DELIMITER'])
                 for r in ws.rows:
-                    c.writerow([cell.value for cell in r])
+                    if r[0].value is not None:  # ignore empty fields.
+                        c.writerow([cell.value for cell in r])
             print('Endcoding: ' + str(get_file_encoding(CSV)))
             print('Endcoding with chardet: ' + str(get_file_encoding_chardet(CSV)))
     wb.save("{}/{}.xlsx".format(config['SAVE_PATH'], 'final'))  # , ntpath.basename(config['FILENAME'])
