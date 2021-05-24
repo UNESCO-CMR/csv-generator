@@ -1,10 +1,15 @@
-from openpyxl import load_workbook
-import re
-import yaml
-from unidecode import unidecode
-import random
 import csv
+import random
+import re
+
 import chardet
+import yaml
+from openpyxl import load_workbook
+from unidecode import unidecode
+
+import logging
+
+logging.basicConfig(level=logging.DEBUG, format='[%(levelname)s] %(asctime)s - %(message)s', datefmt='%d-%b-%y %H:%M:%S')
 
 
 def get_file_encoding(src_file_path):
@@ -59,9 +64,47 @@ def compose_last_name(f_name):
         return split[0], split[0]
 
 
+def rand_str(count, allowed=None):
+    if allowed is None:
+        allowed = [chr(x) for x in range(ord('a'), ord('z') + 1)]
+    return ''.join(random.choice(allowed) for x in range(count))
+
+
+def load_usernames(path):
+    """
+    @todo Load usernames from local cache file (if necessary)
+    :param path: Path to root folder containing sub folders
+    :return: List already used usernames (from final spreadsheets)
+    """
+    import glob
+    import os
+    usernames = []
+    head, _ = os.path.split(path)
+    files = glob.glob("{}/*/final.xlsx".format(head))
+    logging.info("Loading used usernames...")
+    for final in files:
+        wb = load_workbook(final)
+        for sheet_name in wb.sheetnames:
+            ws = wb[sheet_name]
+            labels = [[field.value.lower() for field in row if field.value] for row in ws.iter_rows(max_row=1)][0]
+            USERNAME_COL = labels.index('username') + 1
+            current_row = 1
+            for row in ws.iter_rows():
+                col = 1
+                for cell in row:
+                    if cell.value in labels:
+                        continue
+                    if col == USERNAME_COL:
+                        usernames.append(ws.cell(row=current_row, column=USERNAME_COL).value)
+                    col += 1
+                current_row += 1
+
+    return usernames
+
+
 def main():
     wb = load_workbook(config['FILENAME'])
-    usernames = []
+    usernames = load_usernames(config['SAVE_PATH'])
     for sheet_name in wb.sheetnames:
         ws = wb[sheet_name]
 
@@ -108,7 +151,7 @@ def main():
                             ws.cell(row=current_row, column=L_NAME_COL, value=last_name)
                     if config['UPDATE_PASSWORD'] or type(password) == int:
                         # if password is None or type(password) == int:
-                        pass_gen = chr(random.randrange(ord('a'), ord('z')))
+                        pass_gen = rand_str(config['PASSWORD_LENGTH'])
                         ws.cell(row=current_row, column=PASS_COL, value=pass_gen)
 
                     if config['UPDATE_USERNAME']:
